@@ -3,6 +3,11 @@ import axios from "axios";
 import Grid from "@mui/material/Grid";
 import Card from "@mui/material/Card";
 import Button from "@mui/material/Button";
+import TextField from "@mui/material/TextField";
+import Dialog from "@mui/material/Dialog";
+import DialogActions from "@mui/material/DialogActions";
+import DialogContent from "@mui/material/DialogContent";
+import DialogTitle from "@mui/material/DialogTitle";
 
 // Material Dashboard 2 React components
 import MDBox from "components/MDBox";
@@ -16,6 +21,8 @@ import DataTable from "examples/Tables/DataTable";
 
 function UsersTable() {
   const [userData, setUserData] = useState({ columns: [], rows: [] });
+  const [open, setOpen] = useState(false);
+  const [selectedUser, setSelectedUser] = useState({ id: "", name: "", email: "", password: "" });
 
   useEffect(() => {
     const fetchUsers = async () => {
@@ -30,7 +37,7 @@ function UsersTable() {
           { Header: "Actions", accessor: "actions" },
         ];
 
-        const rows = users.map((user) => ({
+        const formatUser = (user) => ({
           id: user.id,
           name: user.name,
           email: user.email,
@@ -40,7 +47,7 @@ function UsersTable() {
                 variant="contained"
                 style={{ backgroundColor: "#4CAF50", color: "white" }}
                 size="small"
-                onClick={() => handleUpdate(user.id)}
+                onClick={() => handleOpenUpdate(user)}
               >
                 Update
               </Button>
@@ -54,9 +61,9 @@ function UsersTable() {
               </Button>
             </>
           ),
-        }));
+        });
 
-        setUserData({ columns, rows });
+        setUserData({ columns, rows: users.map(formatUser) });
       } catch (error) {
         console.error("Error fetching users:", error);
       }
@@ -65,9 +72,28 @@ function UsersTable() {
     fetchUsers();
   }, []);
 
-  const handleUpdate = (id) => {
-    console.log("Update user with ID:", id);
-    // Implement update logic here
+  const handleOpenUpdate = (user) => {
+    setSelectedUser(user);
+    setOpen(true);
+  };
+
+  const handleClose = () => {
+    setOpen(false);
+  };
+
+  const handleUpdate = async () => {
+    try {
+      await axios.put(`http://localhost:3000/curd/${selectedUser.id}`, selectedUser);
+      setUserData((prevData) => ({
+        ...prevData,
+        rows: prevData.rows.map((row) =>
+          row.id === selectedUser.id ? { ...selectedUser, actions: row.actions } : row
+        ),
+      }));
+      setOpen(false);
+    } catch (error) {
+      console.error("Error updating user:", error);
+    }
   };
 
   const handleDelete = async (id) => {
@@ -117,6 +143,43 @@ function UsersTable() {
         </Grid>
       </MDBox>
       <Footer />
+
+      {/* Update Dialog */}
+      <Dialog open={open} onClose={handleClose}>
+        <DialogTitle>Update User</DialogTitle>
+        <DialogContent>
+          <TextField
+            margin="dense"
+            label="Name"
+            fullWidth
+            value={selectedUser.name}
+            onChange={(e) => setSelectedUser({ ...selectedUser, name: e.target.value })}
+          />
+          <TextField
+            margin="dense"
+            label="Email"
+            fullWidth
+            value={selectedUser.email}
+            onChange={(e) => setSelectedUser({ ...selectedUser, email: e.target.value })}
+          />
+          <TextField
+            margin="dense"
+            label="Password"
+            type="password"
+            fullWidth
+            value={selectedUser.password}
+            onChange={(e) => setSelectedUser({ ...selectedUser, password: e.target.value })}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleClose} color="secondary">
+            Cancel
+          </Button>
+          <Button onClick={handleUpdate} color="primary" variant="contained">
+            Update
+          </Button>
+        </DialogActions>
+      </Dialog>
     </DashboardLayout>
   );
 }
